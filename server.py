@@ -1,14 +1,15 @@
+import os
 from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
 import yt_dlp
 
-# Se index.html è nella radice del progetto, usa template_folder='.'
-# Se invece è nella cartella 'templates/', lascia solo app = Flask(__name__)
+# template_folder='.' dice a Flask di cercare index.html nella stessa cartella di server.py
 app = Flask(__name__, template_folder='.')
-CORS(app)  
+CORS(app)
 
 @app.route('/', methods=['GET'])
 def home():
+    # Serve l'interfaccia principale index.html direttamente da Render
     return render_template('index.html')
 
 @app.route('/stream', methods=['GET'])
@@ -42,6 +43,7 @@ def get_audio_stream():
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
-    print("🚀 Server Audio avviato su http://127.0.0.1:5000")
-    app.run(port=5000)
+    # Render assegna una porta dinamica tramite variabile d'ambiente PORT
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)
     
