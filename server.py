@@ -1,9 +1,15 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
 import yt_dlp
 
-app = Flask(__name__)
-CORS(app)  # Permette al file HTML di comunicare con Python senza blocchi CORS
+# Se index.html è nella radice del progetto, usa template_folder='.'
+# Se invece è nella cartella 'templates/', lascia solo app = Flask(__name__)
+app = Flask(__name__, template_folder='.')
+CORS(app)  
+
+@app.route('/', methods=['GET'])
+def home():
+    return render_template('index.html')
 
 @app.route('/stream', methods=['GET'])
 def get_audio_stream():
@@ -11,7 +17,6 @@ def get_audio_stream():
     if not query:
         return jsonify({'error': 'Nessuna query fornita'}), 400
 
-    # Configurazione yt-dlp (lo stesso motore dei bot Discord)
     ydl_opts = {
         'format': 'bestaudio/best',
         'noplaylist': True,
@@ -24,7 +29,6 @@ def get_audio_stream():
             info = ydl.extract_info(f"ytsearch1:{query}", download=False)
             if 'entries' in info and len(info['entries']) > 0:
                 video_data = info['entries'][0]
-                # Estrae il link diretto al file audio stream (.webm / .m4a)
                 audio_url = video_data['url']
                 return jsonify({
                     'status': 'success',
@@ -40,3 +44,4 @@ def get_audio_stream():
 if __name__ == '__main__':
     print("🚀 Server Audio avviato su http://127.0.0.1:5000")
     app.run(port=5000)
+    
