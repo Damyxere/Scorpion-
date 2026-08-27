@@ -1,4 +1,3 @@
-  GNU nano 9.1                                server.py
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import yt_dlp
