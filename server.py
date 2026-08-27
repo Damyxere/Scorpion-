@@ -1,7 +1,7 @@
 import os
+import requests
 from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
-import yt_dlp
 
 app = Flask(__name__, template_folder='.')
 CORS(app)
@@ -16,33 +16,37 @@ def get_audio_stream():
     if not query:
         return jsonify({'error': 'Nessuna query fornita'}), 400
 
-    ydl_opts = {
-        'format': 'bestaudio[ext=m4a]/bestaudio/best',
-        'noplaylist': True,
-        'quiet': True,
-        'default_search': 'ytsearch1:',
-        'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'extractor_args': {
-            'youtube': {
-                'player_client': ['android', 'web']
-            }
-        }
-    }
-
     try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(f"ytsearch1:{query}", download=False)
-            if 'entries' in info and len(info['entries']) > 0:
-                video_data = info['entries'][0]
-                audio_url = video_data.get('url')
-                return jsonify({
-                    'status': 'success',
-                    'audio_url': audio_url,
-                    'title': video_data.get('title'),
-                    'duration': video_data.get('duration')
-                })
-            else:
-                return jsonify({'error': 'Brano non trovato'}), 404
+        # 1. Cerca il brano tramite l'API di Piped
+        search_url = f"https://pipedapi.kavin.rocks/search?q={query}&filter=music_songs"
+        response = requests.get(search_url, timeout=10)
+        data = response.json()
+
+        items = data.get('items', [])
+        if not items:
+            return jsonify({'error': 'Brano non trovato'}), 404
+
+        # Prendi il primo risultato
+        first_track = items[0]
+        video_id = first_track['url'].split('=')[-1]
+
+        # 2. Recupera gli stream audio del brano
+        stream_data = requests.get(f"https://pipedapi.kavin.rocks/streams/{video_id}", timeout=10).json()
+        
+        audio_streams = stream_data.get('audioStreams', [])
+        if not audio_streams:
+            return jsonify({'error': 'Stream audio non disponibile'}), 404
+
+        # Seleziona lo stream audio con la qualità migliore
+        best_audio = audio_streams[0]['url']
+
+        return jsonify({
+            'status': 'success',
+            'audio_url': best_audio,
+            'title': stream_data.get('title'),
+            'duration': stream_data.get('duration')
+        })
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
