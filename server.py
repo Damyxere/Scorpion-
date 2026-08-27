@@ -3,13 +3,11 @@ from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
 import yt_dlp
 
-# template_folder='.' dice a Flask di cercare index.html nella stessa cartella di server.py
 app = Flask(__name__, template_folder='.')
 CORS(app)
 
 @app.route('/', methods=['GET'])
 def home():
-    # Serve l'interfaccia principale index.html direttamente da Render
     return render_template('index.html')
 
 @app.route('/stream', methods=['GET'])
@@ -19,10 +17,16 @@ def get_audio_stream():
         return jsonify({'error': 'Nessuna query fornita'}), 400
 
     ydl_opts = {
-        'format': 'bestaudio/best',
+        'format': 'bestaudio[ext=m4a]/bestaudio/best',
         'noplaylist': True,
         'quiet': True,
         'default_search': 'ytsearch1:',
+        'user_agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'extractor_args': {
+            'youtube': {
+                'player_client': ['android', 'web']
+            }
+        }
     }
 
     try:
@@ -30,7 +34,7 @@ def get_audio_stream():
             info = ydl.extract_info(f"ytsearch1:{query}", download=False)
             if 'entries' in info and len(info['entries']) > 0:
                 video_data = info['entries'][0]
-                audio_url = video_data['url']
+                audio_url = video_data.get('url')
                 return jsonify({
                     'status': 'success',
                     'audio_url': audio_url,
@@ -43,7 +47,6 @@ def get_audio_stream():
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
-    # Render assegna una porta dinamica tramite variabile d'ambiente PORT
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
     
